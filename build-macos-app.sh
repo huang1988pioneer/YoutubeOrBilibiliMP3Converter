@@ -1,0 +1,14 @@
+#!/bin/zsh
+set -euo pipefail
+
+dotnet build
+
+APP_DIR="YoutubeToMP3Converter.app"
+MACOS_DIR="$APP_DIR/Contents/MacOS"
+
+mkdir -p "$MACOS_DIR"
+cp -R bin/Debug/net10.0/. "$MACOS_DIR/"
+cp Info.plist "$APP_DIR/Contents/Info.plist"
+chmod +x "$MACOS_DIR/YoutubeToMP3Converter"
+
+open -n "$APP_DIR"

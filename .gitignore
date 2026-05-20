@@ -1,0 +1,7 @@
+bin/
+obj/
+*.app/
+.local/
+.DS_Store
+*.user
+*.suo
