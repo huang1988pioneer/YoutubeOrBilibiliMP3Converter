@@ -89,9 +89,10 @@ public sealed class MainWindow : Window
             IsReadOnly = true,
             FontFamily = new FontFamily("Menlo, Consolas, monospace"),
             FontSize = 12,
-            Background = Brush.Parse("#111827"),
-            Foreground = Brush.Parse("#E5E7EB"),
-            BorderThickness = new Thickness(0),
+            Background = Brush.Parse("#FFFFFF"),
+            Foreground = Brush.Parse("#1F2937"),
+            BorderBrush = Brush.Parse("#D1D5DB"),
+            BorderThickness = new Thickness(1),
             Padding = new Thickness(14),
             MinHeight = 210
         };
@@ -272,7 +273,7 @@ public sealed class MainWindow : Window
         if (ytDlpPath is null)
         {
             SetStatus("找不到 yt-dlp，請先安裝後再試");
-            AppendLog(GetInstallHint());
+            AppendInstallHint();
             return;
         }
 
@@ -374,7 +375,7 @@ public sealed class MainWindow : Window
         if (ytDlp is null || ffmpeg is null)
         {
             SetStatus("需要 yt-dlp 和 ffmpeg 才能轉換 MP3");
-            AppendLog(GetInstallHint());
+            AppendInstallHint();
             AppendLog($"yt-dlp: {ytDlp ?? "找不到"}");
             AppendLog($"ffmpeg: {ffmpeg ?? "找不到"}");
             return;
@@ -384,19 +385,27 @@ public sealed class MainWindow : Window
         AppendLog($"ffmpeg: {ffmpeg}");
     }
 
-    private static string GetInstallHint()
+    private void AppendInstallHint()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            return "Windows 可用 winget install yt-dlp.yt-dlp Gyan.FFmpeg，或安裝後把 yt-dlp.exe 與 ffmpeg.exe 加到 PATH。";
+            AppendLog("Windows 第一次使用前，請先安裝轉檔工具：");
+            AppendLog("1. 按 Windows 鍵，輸入「終端機」");
+            AppendLog("2. 在「終端機」上按右鍵，選擇「以系統管理員身分執行」");
+            AppendLog("3. 貼上這行指令後按 Enter：");
+            AppendLog("   winget install yt-dlp.yt-dlp Gyan.FFmpeg");
+            AppendLog("4. 如果畫面詢問是否同意，輸入 Y 後按 Enter");
+            AppendLog("5. 安裝完成後，重新開啟這個程式");
+            return;
         }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            return "macOS 可用 Homebrew 安裝: brew install yt-dlp ffmpeg";
+            AppendLog("macOS 可用 Homebrew 安裝：brew install yt-dlp ffmpeg");
+            return;
         }
 
-        return "請用系統套件管理器安裝 yt-dlp 和 ffmpeg，並確認兩者可從 PATH 執行。";
+        AppendLog("請用系統套件管理器安裝 yt-dlp 和 ffmpeg，並確認兩者可從 PATH 執行。");
     }
 
     private void SetBusy(bool busy)
