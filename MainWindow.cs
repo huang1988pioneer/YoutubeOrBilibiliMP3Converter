@@ -35,9 +35,9 @@ public sealed class MainWindow : Window
 
         _urlBoxes =
         [
-            CreateUrlBox("連結 1"),
-            CreateUrlBox("連結 2"),
-            CreateUrlBox("連結 3")
+            CreateUrlBox("網址 1"),
+            CreateUrlBox("網址 2"),
+            CreateUrlBox("網址 3")
         ];
 
         _outputBox = new TextBox
@@ -59,7 +59,7 @@ public sealed class MainWindow : Window
 
         _convertButton = new Button
         {
-            Content = "開始轉 MP3",
+            Content = "轉成 MP3",
             MinWidth = 128,
             MinHeight = 42,
             HorizontalAlignment = HorizontalAlignment.Right
@@ -122,7 +122,7 @@ public sealed class MainWindow : Window
         });
         header.Children.Add(new TextBlock
         {
-            Text = "最多貼上三個連結，選擇輸出資料夾，依序轉成 MP3。",
+            Text = "貼上最多三個 YouTube 連結，選擇輸出資料夾後轉換成 MP3。",
             FontSize = 14,
             Foreground = Brush.Parse("#5F6877")
         });
@@ -139,7 +139,7 @@ public sealed class MainWindow : Window
         Grid.SetRow(body, 1);
         root.Children.Add(body);
 
-        body.Children.Add(CreateField("YouTube 連結", BuildUrlInputs(), 0));
+        body.Children.Add(CreateField("YouTube 網址", BuildUrlInputs(), 0));
 
         var outputRow = new Grid
         {
@@ -172,7 +172,7 @@ public sealed class MainWindow : Window
         };
         logPanel.Children.Add(new TextBlock
         {
-            Text = "日誌",
+            Text = "記錄",
             FontSize = 13,
             FontWeight = FontWeight.SemiBold,
             Foreground = Brush.Parse("#394150")
@@ -204,7 +204,7 @@ public sealed class MainWindow : Window
     {
         return new TextBox
         {
-            PlaceholderText = $"{label}：貼上 YouTube 影片或播放清單連結",
+            PlaceholderText = $"{label}: 貼上 YouTube 影片或播放清單網址",
             FontSize = 15,
             MinHeight = 40
         };
@@ -235,7 +235,7 @@ public sealed class MainWindow : Window
         {
             _outputBox.Text = path;
             SaveOutputFolderIfValid();
-            SetStatus("輸出資料夾已更新。");
+            SetStatus("輸出資料夾已更新");
         }
     }
 
@@ -256,14 +256,14 @@ public sealed class MainWindow : Window
 
         if (urls.Length == 0)
         {
-            SetStatus("請至少貼上一個 YouTube 連結。");
+            SetStatus("請至少輸入一個 YouTube 網址");
             return;
         }
 
         var outputPath = _outputBox.Text?.Trim();
         if (string.IsNullOrWhiteSpace(outputPath) || !Directory.Exists(outputPath))
         {
-            SetStatus("請選擇有效的輸出資料夾。");
+            SetStatus("請選擇有效的輸出資料夾");
             return;
         }
         AppSettings.Save(outputPath);
@@ -271,8 +271,8 @@ public sealed class MainWindow : Window
         var ytDlpPath = ToolLocator.FindExecutable("yt-dlp");
         if (ytDlpPath is null)
         {
-            SetStatus("找不到 yt-dlp，請先安裝。");
-            AppendLog("macOS 可用 Homebrew 安裝：brew install yt-dlp ffmpeg");
+            SetStatus("找不到 yt-dlp，請先安裝後再試");
+            AppendLog(GetInstallHint());
             return;
         }
 
@@ -281,7 +281,7 @@ public sealed class MainWindow : Window
         _logBox.Text = "";
         AppendLog($"yt-dlp: {ytDlpPath}");
         AppendLog($"輸出資料夾: {outputPath}");
-        AppendLog($"準備轉檔 {urls.Length} 個連結。");
+        AppendLog($"準備轉換 {urls.Length} 個項目");
 
         try
         {
@@ -289,7 +289,7 @@ public sealed class MainWindow : Window
             for (var index = 0; index < urls.Length; index++)
             {
                 var current = index + 1;
-                SetStatus($"正在轉檔 {current}/{urls.Length}...");
+                SetStatus($"正在轉換 {current}/{urls.Length}...");
                 AppendLog("");
                 AppendLog($"[{current}/{urls.Length}] {urls[index]}");
 
@@ -300,22 +300,22 @@ public sealed class MainWindow : Window
                 }
                 else
                 {
-                    AppendLog($"[{current}/{urls.Length}] 轉檔結束，代碼 {code}。");
+                    AppendLog($"[{current}/{urls.Length}] 轉換失敗，結束碼 {code}");
                 }
             }
 
             SetStatus(successCount == urls.Length
-                ? $"完成，已輸出 {successCount} 個 MP3。"
-                : $"完成 {successCount}/{urls.Length} 個，請查看日誌。");
+                ? $"完成，已輸出 {successCount} 個 MP3"
+                : $"完成 {successCount}/{urls.Length} 個，請查看記錄");
         }
         catch (OperationCanceledException)
         {
-            SetStatus("已取消。");
-            AppendLog("使用者取消轉檔。");
+            SetStatus("已取消");
+            AppendLog("使用者取消轉換。");
         }
         catch (Exception ex)
         {
-            SetStatus("轉檔失敗。");
+            SetStatus("轉換時發生錯誤");
             AppendLog(ex.Message);
         }
         finally
@@ -373,15 +373,30 @@ public sealed class MainWindow : Window
 
         if (ytDlp is null || ffmpeg is null)
         {
-            SetStatus("需要 yt-dlp 與 ffmpeg 才能轉 MP3。");
-            AppendLog("尚未找到必要工具。macOS 建議安裝：brew install yt-dlp ffmpeg");
-            AppendLog($"yt-dlp: {(ytDlp ?? "未找到")}");
-            AppendLog($"ffmpeg: {(ffmpeg ?? "未找到")}");
+            SetStatus("需要 yt-dlp 和 ffmpeg 才能轉換 MP3");
+            AppendLog(GetInstallHint());
+            AppendLog($"yt-dlp: {ytDlp ?? "找不到"}");
+            AppendLog($"ffmpeg: {ffmpeg ?? "找不到"}");
             return;
         }
 
         AppendLog($"yt-dlp: {ytDlp}");
         AppendLog($"ffmpeg: {ffmpeg}");
+    }
+
+    private static string GetInstallHint()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return "Windows 可用 winget install yt-dlp.yt-dlp Gyan.FFmpeg，或安裝後把 yt-dlp.exe 與 ffmpeg.exe 加到 PATH。";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return "macOS 可用 Homebrew 安裝: brew install yt-dlp ffmpeg";
+        }
+
+        return "請用系統套件管理器安裝 yt-dlp 和 ffmpeg，並確認兩者可從 PATH 執行。";
     }
 
     private void SetBusy(bool busy)
@@ -393,7 +408,7 @@ public sealed class MainWindow : Window
             urlBox.IsEnabled = !busy;
         }
         _outputBox.IsEnabled = !busy;
-        _convertButton.Content = busy ? "取消" : "開始轉 MP3";
+        _convertButton.Content = busy ? "取消" : "轉成 MP3";
     }
 
     private void SaveOutputFolderIfValid()
@@ -485,7 +500,7 @@ internal sealed class AppSettings
 
 internal static class ToolLocator
 {
-    private static readonly string[] ExtraSearchPaths =
+    private static readonly string[] UnixSearchPaths =
     [
         "/opt/homebrew/bin",
         "/usr/local/bin",
@@ -495,25 +510,52 @@ internal static class ToolLocator
 
     public static string? FindExecutable(string name)
     {
-        var paths = (Environment.GetEnvironmentVariable("PATH") ?? "")
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Concat(ExtraSearchPaths)
-            .Distinct(StringComparer.Ordinal);
+        var executableNames = GetExecutableNames(name);
+        var searchPaths = GetSearchPaths();
 
-        foreach (var path in paths)
+        foreach (var path in searchPaths)
         {
-            var candidate = Path.Combine(path, name);
-            if (File.Exists(candidate) && !Directory.Exists(candidate))
+            foreach (var executableName in executableNames)
             {
-                return candidate;
+                var candidate = Path.Combine(path, executableName);
+                if (File.Exists(candidate) && !Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
             }
         }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        return null;
+    }
+
+    private static IEnumerable<string> GetExecutableNames(string name)
+    {
+        yield return name;
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || Path.HasExtension(name))
         {
-            return FindExecutable($"{name}.exe");
+            yield break;
         }
 
-        return null;
+        var extensions = (Environment.GetEnvironmentVariable("PATHEXT") ?? ".COM;.EXE;.BAT;.CMD")
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var extension in extensions)
+        {
+            yield return $"{name}{extension.ToLowerInvariant()}";
+        }
+    }
+
+    private static IEnumerable<string> GetSearchPaths()
+    {
+        IEnumerable<string> paths = (Environment.GetEnvironmentVariable("PATH") ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            paths = paths.Concat(UnixSearchPaths);
+        }
+
+        return paths.Distinct(StringComparer.OrdinalIgnoreCase);
     }
 }

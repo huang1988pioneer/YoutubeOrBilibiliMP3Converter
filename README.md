@@ -1,19 +1,43 @@
 # YouTube to MP3 Converter
 
-Avalonia 桌面 GUI 版本，可一次貼上最多三個 YouTube 影片或播放清單連結，透過 `yt-dlp` 與 `ffmpeg` 依序轉成 MP3。
+Avalonia GUI app that converts up to three YouTube URLs to MP3 using `yt-dlp` and `ffmpeg`.
 
-## 執行
+## Run
 
 ```bash
 dotnet run
 ```
 
-## 必要工具
+## Windows setup
 
-macOS 建議使用 Homebrew 安裝：
+Install the required command-line tools:
+
+```powershell
+winget install yt-dlp.yt-dlp Gyan.FFmpeg
+```
+
+Restart the terminal after installing so `yt-dlp.exe` and `ffmpeg.exe` are available from `PATH`.
+
+## Build a Windows EXE
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
+```
+
+The default output is `publish\win-x64\YoutubeToMP3Converter.exe`.
+
+For Windows on ARM:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build-windows.ps1 -Runtime win-arm64
+```
+
+## macOS setup
 
 ```bash
 brew install yt-dlp ffmpeg
 ```
 
-轉檔時，MP3 會輸出到畫面中選擇的資料夾。輸出資料夾可以直接修改或用按鈕選擇，程式會記住上一次使用的有效資料夾，下一次開啟時自動帶入。
+## Notes
+
+Converted MP3 files are saved to the selected output folder. The last valid folder is remembered in the user's application data directory.
