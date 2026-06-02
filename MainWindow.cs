@@ -32,7 +32,7 @@ public sealed class MainWindow : Window
 
     public MainWindow()
     {
-        Title = "YouTube to MP3 Converter";
+        Title = "YouTube / Bilibili to MP3 Converter";
         Width = 820;
         Height = 620;
         MinWidth = 680;
@@ -130,14 +130,14 @@ public sealed class MainWindow : Window
         };
         header.Children.Add(new TextBlock
         {
-            Text = "YouTube to MP3 Converter",
+            Text = "YouTube / Bilibili to MP3 Converter",
             FontSize = 28,
             FontWeight = FontWeight.SemiBold,
             Foreground = Brush.Parse("#111827")
         });
         header.Children.Add(new TextBlock
         {
-            Text = "貼上最多三個 YouTube 連結，選擇輸出資料夾後轉換成 MP3。",
+            Text = "貼上最多三個 YouTube 或 Bilibili 連結，選擇輸出資料夾後轉換成 MP3。",
             FontSize = 14,
             Foreground = Brush.Parse("#5F6877")
         });
@@ -154,7 +154,7 @@ public sealed class MainWindow : Window
         Grid.SetRow(body, 1);
         root.Children.Add(body);
 
-        body.Children.Add(CreateField("YouTube 網址", BuildUrlInputs(), 0));
+        body.Children.Add(CreateField("影片網址", BuildUrlInputs(), 0));
 
         var outputRow = new Grid
         {
@@ -221,7 +221,7 @@ public sealed class MainWindow : Window
     {
         return new TextBox
         {
-            PlaceholderText = $"{label}: 貼上 YouTube 影片或播放清單網址",
+            PlaceholderText = $"{label}: 貼上 YouTube 或 Bilibili 影片/播放清單網址",
             FontSize = 15,
             MinHeight = 40
         };
@@ -283,7 +283,7 @@ public sealed class MainWindow : Window
 
         if (urls.Length == 0)
         {
-            SetStatus("請至少輸入一個 YouTube 網址");
+            SetStatus("請至少輸入一個 YouTube 或 Bilibili 網址");
             return;
         }
 

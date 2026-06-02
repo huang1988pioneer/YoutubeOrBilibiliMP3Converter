@@ -9,7 +9,7 @@ public sealed class App : Application
 {
     public override void Initialize()
     {
-        Name = "YouTube MP3";
+        Name = "YouTube Bilibili MP3";
         Styles.Add(new FluentTheme());
         RequestedThemeVariant = ThemeVariant.Light;
     }

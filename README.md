@@ -1,6 +1,6 @@
-# YouTube to MP3 Converter
+# YouTube / Bilibili to MP3 Converter
 
-Avalonia GUI app that converts up to three YouTube URLs to MP3 using `yt-dlp` and `ffmpeg`.
+Avalonia GUI app that converts up to three YouTube or Bilibili URLs to MP3 using `yt-dlp` and `ffmpeg`.
 
 ## Run
 
@@ -23,7 +23,7 @@ winget install yt-dlp.yt-dlp Gyan.FFmpeg
 
 5. 如果畫面問你是否同意，輸入 `Y`，再按 Enter。
 6. 等安裝完成後，關掉終端機。
-7. 重新開啟 YouTube to MP3 Converter，就可以開始使用。
+7. 重新開啟 YouTube / Bilibili to MP3 Converter，就可以開始使用。
 
 如果 Windows 顯示找不到 `winget`，請先從 Microsoft Store 更新或安裝「應用程式安裝程式」。
 
@@ -50,3 +50,5 @@ brew install yt-dlp ffmpeg
 ## Notes
 
 Converted MP3 files are saved to the selected output folder. The last valid folder is remembered in the user's application data directory.
+
+YouTube videos, YouTube playlists, Bilibili videos, and Bilibili collection/list URLs are handled by `yt-dlp`. Some private, region-limited, member-only, or login-required videos may still need cookies or account access outside this app.
