@@ -52,3 +52,11 @@ brew install yt-dlp ffmpeg
 Converted MP3 files are saved to the selected output folder. The last valid folder is remembered in the user's application data directory.
 
 YouTube videos, YouTube playlists, Bilibili videos, and Bilibili collection/list URLs are handled by `yt-dlp`. Some private, region-limited, member-only, or login-required videos may still need cookies or account access outside this app.
+
+Example Bilibili video URLs:
+
+```text
+https://www.bilibili.com/video/BV158dfBAEbH/
+https://www.bilibili.com/video/BV15hdfBaECr/
+https://www.bilibili.com/video/BV1q4dfBNE8X/
+```

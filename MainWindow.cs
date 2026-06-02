@@ -278,6 +278,8 @@ public sealed class MainWindow : Window
             .Select(box => box.Text?.Trim())
             .Where(url => !string.IsNullOrWhiteSpace(url))
             .Cast<string>()
+            .Select(NormalizeMediaUrl)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(3)
             .ToArray();
 
@@ -425,6 +427,60 @@ public sealed class MainWindow : Window
         }
 
         return process.ExitCode;
+    }
+
+    private static string NormalizeMediaUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return url;
+        }
+
+        var host = uri.Host.ToLowerInvariant();
+        var isBilibiliVideo = host.EndsWith("bilibili.com", StringComparison.OrdinalIgnoreCase)
+            && uri.AbsolutePath.StartsWith("/video/", StringComparison.OrdinalIgnoreCase);
+
+        if (!isBilibiliVideo)
+        {
+            return url;
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Query = RemoveTrackingQueryParameters(uri.Query)
+        };
+
+        return builder.Uri.ToString();
+    }
+
+    private static string RemoveTrackingQueryParameters(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return "";
+        }
+
+        var trackingKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "spm_id_from",
+            "from_spmid",
+            "vd_source",
+            "share_source",
+            "share_medium",
+            "share_plat",
+            "share_session_id",
+            "unique_k"
+        };
+
+        var keptParameters = query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(parameter =>
+            {
+                var key = parameter.Split('=', 2)[0];
+                return !trackingKeys.Contains(Uri.UnescapeDataString(key));
+            });
+
+        return string.Join("&", keptParameters);
     }
 
     private async Task ReadProcessStreamAsync(Stream stream, CancellationToken token)
