@@ -391,6 +391,7 @@ public sealed class MainWindow : Window
         startInfo.ArgumentList.Add("utf-8");
         startInfo.ArgumentList.Add("--ffmpeg-location");
         startInfo.ArgumentList.Add(Path.GetDirectoryName(ffmpegPath) ?? ffmpegPath);
+        AddBilibiliBrowserHeaders(startInfo, url);
         startInfo.ArgumentList.Add("--embed-thumbnail");
         startInfo.ArgumentList.Add("--add-metadata");
         startInfo.ArgumentList.Add("--paths");
@@ -429,6 +430,21 @@ public sealed class MainWindow : Window
         return process.ExitCode;
     }
 
+    private static void AddBilibiliBrowserHeaders(ProcessStartInfo startInfo, string url)
+    {
+        if (!IsBilibiliVideoUrl(url))
+        {
+            return;
+        }
+
+        startInfo.ArgumentList.Add("--add-headers");
+        startInfo.ArgumentList.Add("User-Agent:Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
+        startInfo.ArgumentList.Add("--add-headers");
+        startInfo.ArgumentList.Add("Referer:https://www.bilibili.com/");
+        startInfo.ArgumentList.Add("--add-headers");
+        startInfo.ArgumentList.Add("Accept-Language:zh-CN,zh-TW;q=0.9,zh;q=0.8,en;q=0.7");
+    }
+
     private static string NormalizeMediaUrl(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
@@ -436,11 +452,7 @@ public sealed class MainWindow : Window
             return url;
         }
 
-        var host = uri.Host.ToLowerInvariant();
-        var isBilibiliVideo = host.EndsWith("bilibili.com", StringComparison.OrdinalIgnoreCase)
-            && uri.AbsolutePath.StartsWith("/video/", StringComparison.OrdinalIgnoreCase);
-
-        if (!isBilibiliVideo)
+        if (!IsBilibiliVideoUri(uri))
         {
             return url;
         }
@@ -451,6 +463,17 @@ public sealed class MainWindow : Window
         };
 
         return builder.Uri.ToString();
+    }
+
+    private static bool IsBilibiliVideoUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) && IsBilibiliVideoUri(uri);
+    }
+
+    private static bool IsBilibiliVideoUri(Uri uri)
+    {
+        return uri.Host.EndsWith("bilibili.com", StringComparison.OrdinalIgnoreCase)
+            && uri.AbsolutePath.StartsWith("/video/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string RemoveTrackingQueryParameters(string query)
@@ -525,7 +548,14 @@ public sealed class MainWindow : Window
             return;
         }
 
-        AppendLog(DecodeProcessText(bytes.ToArray()));
+        var line = DecodeProcessText(bytes.ToArray());
+        AppendLog(line);
+
+        if (line.Contains("HTTP Error 412", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Precondition Failed", StringComparison.OrdinalIgnoreCase))
+        {
+            AppendLog("Bilibili 回傳 412，通常是網站防護、地區限制、會員/登入限制或需要瀏覽器 cookies。請先確認瀏覽器可正常播放該影片。");
+        }
     }
 
     private static string DecodeProcessText(byte[] bytes)
