@@ -392,6 +392,11 @@ public sealed class MainWindow : Window
         startInfo.ArgumentList.Add("--ffmpeg-location");
         startInfo.ArgumentList.Add(Path.GetDirectoryName(ffmpegPath) ?? ffmpegPath);
         AddBilibiliBrowserHeaders(startInfo, url);
+        var cookieBrowser = AddBilibiliBrowserCookies(startInfo, url);
+        if (cookieBrowser is not null)
+        {
+            AppendLog($"Bilibili cookies: {cookieBrowser}");
+        }
         startInfo.ArgumentList.Add("--embed-thumbnail");
         startInfo.ArgumentList.Add("--add-metadata");
         startInfo.ArgumentList.Add("--paths");
@@ -443,6 +448,75 @@ public sealed class MainWindow : Window
         startInfo.ArgumentList.Add("Referer:https://www.bilibili.com/");
         startInfo.ArgumentList.Add("--add-headers");
         startInfo.ArgumentList.Add("Accept-Language:zh-CN,zh-TW;q=0.9,zh;q=0.8,en;q=0.7");
+    }
+
+    private static string? AddBilibiliBrowserCookies(ProcessStartInfo startInfo, string url)
+    {
+        if (!IsBilibiliVideoUrl(url))
+        {
+            return null;
+        }
+
+        var browser = FindBrowserForCookies();
+        if (browser is null)
+        {
+            return null;
+        }
+
+        startInfo.ArgumentList.Add("--cookies-from-browser");
+        startInfo.ArgumentList.Add(browser);
+        return browser;
+    }
+
+    private static string? FindBrowserForCookies()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            if (Directory.Exists("/Applications/Firefox.app"))
+            {
+                return "firefox";
+            }
+
+            if (Directory.Exists("/Applications/Google Chrome.app"))
+            {
+                return "chrome";
+            }
+
+            if (Directory.Exists("/Applications/Safari.app"))
+            {
+                return "safari";
+            }
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+
+            if (Directory.Exists(Path.Combine(localAppData, "Mozilla", "Firefox"))
+                || Directory.Exists(Path.Combine(programFiles, "Mozilla Firefox"))
+                || Directory.Exists(Path.Combine(programFilesX86, "Mozilla Firefox")))
+            {
+                return "firefox";
+            }
+
+            if (Directory.Exists(Path.Combine(localAppData, "Google", "Chrome"))
+                || Directory.Exists(Path.Combine(programFiles, "Google", "Chrome"))
+                || Directory.Exists(Path.Combine(programFilesX86, "Google", "Chrome")))
+            {
+                return "chrome";
+            }
+
+            if (Directory.Exists(Path.Combine(localAppData, "Microsoft", "Edge"))
+                || Directory.Exists(Path.Combine(programFiles, "Microsoft", "Edge"))
+                || Directory.Exists(Path.Combine(programFilesX86, "Microsoft", "Edge")))
+            {
+                return "edge";
+            }
+        }
+
+        return null;
     }
 
     private static string NormalizeMediaUrl(string url)
@@ -554,7 +628,7 @@ public sealed class MainWindow : Window
         if (line.Contains("HTTP Error 412", StringComparison.OrdinalIgnoreCase)
             || line.Contains("Precondition Failed", StringComparison.OrdinalIgnoreCase))
         {
-            AppendLog("Bilibili 回傳 412，通常是網站防護、地區限制、會員/登入限制或需要瀏覽器 cookies。請先確認瀏覽器可正常播放該影片。");
+            AppendLog("Bilibili 回傳 412，通常是網站防護、地區限制、會員/登入限制或瀏覽器 cookies 無法讀取。請先確認瀏覽器可正常播放該影片，並關閉瀏覽器後再試一次。");
         }
     }
 
