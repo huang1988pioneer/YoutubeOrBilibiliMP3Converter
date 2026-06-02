@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 
-dotnet build
+dotnet build -p:UsedAvaloniaProducts=
 
 APP_DIR="YoutubeToMP3Converter.app"
 MACOS_DIR="$APP_DIR/Contents/MacOS"

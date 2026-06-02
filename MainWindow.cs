@@ -296,10 +296,15 @@ public sealed class MainWindow : Window
         AppSettings.Save(outputPath);
 
         var ytDlpPath = ToolLocator.FindExecutable("yt-dlp");
-        if (ytDlpPath is null)
+        var ffmpegPath = ToolLocator.FindExecutable("ffmpeg");
+        var ffprobePath = ToolLocator.FindExecutable("ffprobe");
+        if (ytDlpPath is null || ffmpegPath is null || ffprobePath is null)
         {
-            SetStatus("找不到 yt-dlp，請先安裝後再試");
+            SetStatus("找不到轉檔工具，請先安裝後再試");
             AppendInstallHint();
+            AppendLog($"yt-dlp: {ytDlpPath ?? "找不到"}");
+            AppendLog($"ffmpeg: {ffmpegPath ?? "找不到"}");
+            AppendLog($"ffprobe: {ffprobePath ?? "找不到"}");
             return;
         }
 
@@ -307,6 +312,8 @@ public sealed class MainWindow : Window
         SetBusy(true);
         _logBox.Text = "";
         AppendLog($"yt-dlp: {ytDlpPath}");
+        AppendLog($"ffmpeg: {ffmpegPath}");
+        AppendLog($"ffprobe: {ffprobePath}");
         AppendLog($"輸出資料夾: {outputPath}");
         AppendLog($"準備轉換 {urls.Length} 個項目");
 
@@ -320,7 +327,7 @@ public sealed class MainWindow : Window
                 AppendLog("");
                 AppendLog($"[{current}/{urls.Length}] {urls[index]}");
 
-                var code = await RunYtDlpAsync(ytDlpPath, urls[index], outputPath, _conversionTokenSource.Token);
+                var code = await RunYtDlpAsync(ytDlpPath, ffmpegPath, ffprobePath, urls[index], outputPath, _conversionTokenSource.Token);
                 if (code == 0)
                 {
                     successCount++;
@@ -353,7 +360,13 @@ public sealed class MainWindow : Window
         }
     }
 
-    private async Task<int> RunYtDlpAsync(string ytDlpPath, string url, string outputPath, CancellationToken token)
+    private async Task<int> RunYtDlpAsync(
+        string ytDlpPath,
+        string ffmpegPath,
+        string ffprobePath,
+        string url,
+        string outputPath,
+        CancellationToken token)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -365,6 +378,7 @@ public sealed class MainWindow : Window
         };
         startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
         startInfo.Environment["PYTHONUTF8"] = "1";
+        ToolLocator.PrependToPath(startInfo.Environment, ytDlpPath, ffmpegPath, ffprobePath);
 
         startInfo.ArgumentList.Add("--extract-audio");
         startInfo.ArgumentList.Add("--audio-format");
@@ -373,6 +387,8 @@ public sealed class MainWindow : Window
         startInfo.ArgumentList.Add("0");
         startInfo.ArgumentList.Add("--encoding");
         startInfo.ArgumentList.Add("utf-8");
+        startInfo.ArgumentList.Add("--ffmpeg-location");
+        startInfo.ArgumentList.Add(Path.GetDirectoryName(ffmpegPath) ?? ffmpegPath);
         startInfo.ArgumentList.Add("--embed-thumbnail");
         startInfo.ArgumentList.Add("--add-metadata");
         startInfo.ArgumentList.Add("--paths");
@@ -485,18 +501,21 @@ public sealed class MainWindow : Window
     {
         var ytDlp = ToolLocator.FindExecutable("yt-dlp");
         var ffmpeg = ToolLocator.FindExecutable("ffmpeg");
+        var ffprobe = ToolLocator.FindExecutable("ffprobe");
 
-        if (ytDlp is null || ffmpeg is null)
+        if (ytDlp is null || ffmpeg is null || ffprobe is null)
         {
             SetStatus("需要 yt-dlp 和 ffmpeg 才能轉換 MP3");
             AppendInstallHint();
             AppendLog($"yt-dlp: {ytDlp ?? "找不到"}");
             AppendLog($"ffmpeg: {ffmpeg ?? "找不到"}");
+            AppendLog($"ffprobe: {ffprobe ?? "找不到"}");
             return;
         }
 
         AppendLog($"yt-dlp: {ytDlp}");
         AppendLog($"ffmpeg: {ffmpeg}");
+        AppendLog($"ffprobe: {ffprobe}");
     }
 
     private void AppendInstallHint()
@@ -650,6 +669,28 @@ internal static class ToolLocator
         }
 
         return null;
+    }
+
+    public static void PrependToPath(IDictionary<string, string?> environment, params string[] executablePaths)
+    {
+        var directories = executablePaths
+            .Select(Path.GetDirectoryName)
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (directories.Length == 0)
+        {
+            return;
+        }
+
+        var existingPath = environment.TryGetValue("PATH", out var path)
+            ? path
+            : Environment.GetEnvironmentVariable("PATH");
+
+        environment["PATH"] = string.Join(Path.PathSeparator, directories.Concat(
+            (existingPath ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)));
     }
 
     private static IEnumerable<string> GetExecutableNames(string name)
