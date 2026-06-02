@@ -20,4 +20,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Windows build created at: $output"
-Write-Host "Run: $(Join-Path $output 'YoutubeToMP3Converter.exe')"
+Write-Host "Run: $(Join-Path $output 'YoutubeOrBilibiliMP3Converter.exe')"

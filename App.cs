@@ -3,7 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 
-namespace YoutubeToMP3Converter;
+namespace YoutubeOrBilibiliMP3Converter;
 
 public sealed class App : Application
 {

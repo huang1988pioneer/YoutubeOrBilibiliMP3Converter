@@ -12,7 +12,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
-namespace YoutubeToMP3Converter;
+namespace YoutubeOrBilibiliMP3Converter;
 
 public sealed class MainWindow : Window
 {
@@ -643,7 +643,12 @@ internal sealed class AppSettings
 {
     private static readonly string SettingsDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "YoutubeToMP3Converter");
+        "YoutubeOrBilibiliMP3Converter");
+
+    private static readonly string LegacySettingsPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "YoutubeToMP3Converter",
+        "settings.json");
 
     private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "settings.json");
 
@@ -653,9 +658,13 @@ internal sealed class AppSettings
     {
         try
         {
-            if (File.Exists(SettingsPath))
+            var path = File.Exists(SettingsPath)
+                ? SettingsPath
+                : LegacySettingsPath;
+
+            if (File.Exists(path))
             {
-                var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsPath));
+                var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path));
                 if (settings is not null && Directory.Exists(settings.LastOutputFolder))
                 {
                     return settings;

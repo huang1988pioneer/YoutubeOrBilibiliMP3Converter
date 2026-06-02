@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace YoutubeToMP3Converter;
+namespace YoutubeOrBilibiliMP3Converter;
 
 internal static class Program
 {

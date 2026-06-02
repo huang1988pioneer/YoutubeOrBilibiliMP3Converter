@@ -33,7 +33,7 @@ winget install yt-dlp.yt-dlp Gyan.FFmpeg
 powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
 ```
 
-The default output is `publish\win-x64\YoutubeToMP3Converter.exe`.
+The default output is `publish\win-x64\YoutubeOrBilibiliMP3Converter.exe`.
 
 For Windows on ARM:
 
