@@ -47,9 +47,9 @@ public sealed class MainWindow : Window
 
         Title = "YouTube / Bilibili to MP3 Converter";
         Width = 820;
-        Height = 620;
+        Height = 720;
         MinWidth = 680;
-        MinHeight = 520;
+        MinHeight = 640;
         Background = Brush.Parse("#EEF2F6");
         _urlInputCount = settings.UrlInputCount;
         _outputFormat = settings.OutputFormat;
@@ -158,11 +158,16 @@ public sealed class MainWindow : Window
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(14),
-            MinHeight = 210,
+            MinHeight = 170,
             Child = _logScrollViewer
         };
 
-        Content = BuildLayout();
+        Content = new ScrollViewer
+        {
+            Content = BuildLayout(),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+        };
         UpdateUrlBoxVisibility();
         UpdateMp4QualityVisibility();
         UpdateConvertButtonText();
@@ -171,16 +176,15 @@ public sealed class MainWindow : Window
 
     private Control BuildLayout()
     {
-        var root = new Grid
+        var root = new StackPanel
         {
-            RowDefinitions = new RowDefinitions("Auto,*"),
-            Margin = new Thickness(28)
+            Margin = new Thickness(26, 24)
         };
 
         var header = new StackPanel
         {
             Spacing = 6,
-            Margin = new Thickness(0, 0, 0, 22)
+            Margin = new Thickness(0, 0, 0, 18)
         };
         header.Children.Add(new TextBlock
         {
@@ -196,16 +200,14 @@ public sealed class MainWindow : Window
             Foreground = Brush.Parse("#5F6877")
         });
 
-        Grid.SetRow(header, 0);
         root.Children.Add(header);
 
         var body = new Grid
         {
-            RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,*"),
-            RowSpacing = 16
+            RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,Auto"),
+            RowSpacing = 14
         };
 
-        Grid.SetRow(body, 1);
         root.Children.Add(body);
 
         body.Children.Add(CreateField("影片網址", BuildUrlInputs(), 0));
@@ -239,7 +241,7 @@ public sealed class MainWindow : Window
 
         var logPanel = new Grid
         {
-            RowDefinitions = new RowDefinitions("Auto,*"),
+            RowDefinitions = new RowDefinitions("Auto,Auto"),
             RowSpacing = 8
         };
         logPanel.Children.Add(new TextBlock
