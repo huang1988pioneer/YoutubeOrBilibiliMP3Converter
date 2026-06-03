@@ -16,10 +16,16 @@ namespace YoutubeOrBilibiliMP3Converter;
 
 public sealed class MainWindow : Window
 {
+    private static readonly int[] UrlInputCountOptions = [1, 3, 7];
+    private static readonly string[] OutputFormatOptions = ["MP3", "MP4"];
+    private static readonly string[] Mp4QualityOptions = ["1080p", "4K"];
     private static readonly Encoding Utf8Strict = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private static readonly Encoding SystemAnsiEncoding = GetSystemAnsiEncoding();
 
     private readonly TextBox[] _urlBoxes;
+    private readonly ComboBox _urlInputCountComboBox;
+    private readonly ComboBox _outputFormatComboBox;
+    private readonly ComboBox _mp4QualityComboBox;
     private readonly TextBox _outputBox;
     private readonly Button _chooseFolderButton;
     private readonly Button _clearUrlsButton;
@@ -28,27 +34,59 @@ public sealed class MainWindow : Window
     private readonly TextBox _logBox;
     private readonly ProgressBar _progressBar;
 
+    private int _urlInputCount;
+    private string _outputFormat;
+    private string _mp4Quality;
     private CancellationTokenSource? _conversionTokenSource;
 
     public MainWindow()
     {
+        var settings = AppSettings.Load();
+
         Title = "YouTube / Bilibili to MP3 Converter";
         Width = 820;
         Height = 620;
         MinWidth = 680;
         MinHeight = 520;
         Background = Brush.Parse("#F6F7F9");
+        _urlInputCount = settings.UrlInputCount;
+        _outputFormat = settings.OutputFormat;
+        _mp4Quality = settings.Mp4Quality;
 
-        _urlBoxes =
-        [
-            CreateUrlBox("網址 1"),
-            CreateUrlBox("網址 2"),
-            CreateUrlBox("網址 3")
-        ];
+        _urlBoxes = Enumerable.Range(1, UrlInputCountOptions.Max())
+            .Select(index => CreateUrlBox($"網址 {index}"))
+            .ToArray();
+
+        _urlInputCountComboBox = new ComboBox
+        {
+            ItemsSource = UrlInputCountOptions,
+            SelectedItem = _urlInputCount,
+            MinWidth = 96,
+            MinHeight = 34
+        };
+        _urlInputCountComboBox.SelectionChanged += UrlInputCountChanged;
+
+        _outputFormatComboBox = new ComboBox
+        {
+            ItemsSource = OutputFormatOptions,
+            SelectedItem = _outputFormat,
+            MinWidth = 96,
+            MinHeight = 34
+        };
+        _outputFormatComboBox.SelectionChanged += OutputFormatChanged;
+
+        _mp4QualityComboBox = new ComboBox
+        {
+            ItemsSource = Mp4QualityOptions,
+            SelectedItem = _mp4Quality,
+            MinWidth = 96,
+            MinHeight = 34
+        };
+        _mp4QualityComboBox.SelectionChanged += Mp4QualityChanged;
 
         _outputBox = new TextBox
         {
-            Text = AppSettings.Load().LastOutputFolder,
+            Text = settings.LastOutputFolder,
             IsReadOnly = false,
             FontSize = 14,
             MinHeight = 38
@@ -74,7 +112,7 @@ public sealed class MainWindow : Window
 
         _convertButton = new Button
         {
-            Content = "轉成 MP3",
+            Content = "轉換",
             MinWidth = 128,
             MinHeight = 42,
             HorizontalAlignment = HorizontalAlignment.Right
@@ -112,6 +150,9 @@ public sealed class MainWindow : Window
         };
 
         Content = BuildLayout();
+        UpdateUrlBoxVisibility();
+        UpdateMp4QualityVisibility();
+        UpdateConvertButtonText();
         Opened += (_, _) => CheckTools();
     }
 
@@ -137,7 +178,7 @@ public sealed class MainWindow : Window
         });
         header.Children.Add(new TextBlock
         {
-            Text = "貼上最多三個 YouTube 或 Bilibili 連結，選擇輸出資料夾後轉換成 MP3。",
+            Text = "貼上 YouTube 或 Bilibili 連結，選擇輸出資料夾後轉換成 MP3 或 MP4。",
             FontSize = 14,
             Foreground = Brush.Parse("#5F6877")
         });
@@ -147,7 +188,7 @@ public sealed class MainWindow : Window
 
         var body = new Grid
         {
-            RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,*"),
+            RowDefinitions = new RowDefinitions("Auto,Auto,Auto,Auto,Auto,*"),
             RowSpacing = 16
         };
 
@@ -155,6 +196,7 @@ public sealed class MainWindow : Window
         root.Children.Add(body);
 
         body.Children.Add(CreateField("影片網址", BuildUrlInputs(), 0));
+        body.Children.Add(CreateField("輸出格式", BuildOutputFormatInput(), 1));
 
         var outputRow = new Grid
         {
@@ -164,7 +206,7 @@ public sealed class MainWindow : Window
         outputRow.Children.Add(_outputBox);
         Grid.SetColumn(_chooseFolderButton, 1);
         outputRow.Children.Add(_chooseFolderButton);
-        body.Children.Add(CreateField("輸出資料夾", outputRow, 1));
+        body.Children.Add(CreateField("輸出資料夾", outputRow, 2));
 
         var actionRow = new Grid
         {
@@ -176,10 +218,10 @@ public sealed class MainWindow : Window
         actionRow.Children.Add(_clearUrlsButton);
         Grid.SetColumn(_convertButton, 2);
         actionRow.Children.Add(_convertButton);
-        Grid.SetRow(actionRow, 2);
+        Grid.SetRow(actionRow, 3);
         body.Children.Add(actionRow);
 
-        Grid.SetRow(_progressBar, 3);
+        Grid.SetRow(_progressBar, 4);
         body.Children.Add(_progressBar);
 
         var logPanel = new Grid
@@ -196,7 +238,7 @@ public sealed class MainWindow : Window
         });
         Grid.SetRow(_logBox, 1);
         logPanel.Children.Add(_logBox);
-        Grid.SetRow(logPanel, 4);
+        Grid.SetRow(logPanel, 5);
         body.Children.Add(logPanel);
 
         return root;
@@ -231,6 +273,22 @@ public sealed class MainWindow : Window
     {
         var panel = new StackPanel { Spacing = 8 };
 
+        var countRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        countRow.Children.Add(new TextBlock
+        {
+            Text = "網址組數",
+            FontSize = 13,
+            Foreground = Brush.Parse("#394150"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        countRow.Children.Add(_urlInputCountComboBox);
+        panel.Children.Add(countRow);
+
         foreach (var urlBox in _urlBoxes)
         {
             panel.Children.Add(urlBox);
@@ -239,11 +297,31 @@ public sealed class MainWindow : Window
         return panel;
     }
 
+    private Control BuildOutputFormatInput()
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        row.Children.Add(_outputFormatComboBox);
+        row.Children.Add(new TextBlock
+        {
+            Text = "MP4 畫質",
+            FontSize = 13,
+            Foreground = Brush.Parse("#394150"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        row.Children.Add(_mp4QualityComboBox);
+        return row;
+    }
+
     private async void ChooseFolderAsync(object? sender, RoutedEventArgs e)
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "選擇 MP3 輸出資料夾",
+            Title = "選擇輸出資料夾",
             AllowMultiple = false
         });
 
@@ -266,6 +344,45 @@ public sealed class MainWindow : Window
         SetStatus("網址已清除");
     }
 
+    private void UrlInputCountChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_urlInputCountComboBox.SelectedItem is not int selectedCount)
+        {
+            return;
+        }
+
+        _urlInputCount = NormalizeUrlInputCount(selectedCount);
+        UpdateUrlBoxVisibility();
+        SaveSettingsIfPossible();
+        SetStatus($"網址組數已改為 {_urlInputCount} 組");
+    }
+
+    private void OutputFormatChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_outputFormatComboBox.SelectedItem is not string selectedFormat)
+        {
+            return;
+        }
+
+        _outputFormat = NormalizeOutputFormat(selectedFormat);
+        SaveSettingsIfPossible();
+        SetStatus($"輸出格式已改為 {_outputFormat}");
+        UpdateMp4QualityVisibility();
+        UpdateConvertButtonText();
+    }
+
+    private void Mp4QualityChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_mp4QualityComboBox.SelectedItem is not string selectedQuality)
+        {
+            return;
+        }
+
+        _mp4Quality = NormalizeMp4Quality(selectedQuality);
+        SaveSettingsIfPossible();
+        SetStatus($"MP4 畫質已改為 {_mp4Quality}");
+    }
+
     private async void ConvertOrCancelAsync(object? sender, RoutedEventArgs e)
     {
         if (_conversionTokenSource is not null)
@@ -275,12 +392,12 @@ public sealed class MainWindow : Window
         }
 
         var urls = _urlBoxes
+            .Take(_urlInputCount)
             .Select(box => box.Text?.Trim())
             .Where(url => !string.IsNullOrWhiteSpace(url))
             .Cast<string>()
             .Select(NormalizeMediaUrl)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(3)
             .ToArray();
 
         if (urls.Length == 0)
@@ -295,7 +412,7 @@ public sealed class MainWindow : Window
             SetStatus("請選擇有效的輸出資料夾");
             return;
         }
-        AppSettings.Save(outputPath);
+        AppSettings.Save(outputPath, _urlInputCount, _outputFormat, _mp4Quality);
 
         var ytDlpPath = ToolLocator.FindExecutable("yt-dlp");
         var ffmpegPath = ToolLocator.FindExecutable("ffmpeg");
@@ -317,6 +434,11 @@ public sealed class MainWindow : Window
         AppendLog($"ffmpeg: {ffmpegPath}");
         AppendLog($"ffprobe: {ffprobePath}");
         AppendLog($"輸出資料夾: {outputPath}");
+        AppendLog($"輸出格式: {_outputFormat}");
+        if (_outputFormat == "MP4")
+        {
+            AppendLog($"MP4 畫質: {_mp4Quality}");
+        }
         AppendLog($"準備轉換 {urls.Length} 個項目");
 
         try
@@ -329,7 +451,7 @@ public sealed class MainWindow : Window
                 AppendLog("");
                 AppendLog($"[{current}/{urls.Length}] {urls[index]}");
 
-                var code = await RunYtDlpAsync(ytDlpPath, ffmpegPath, ffprobePath, urls[index], outputPath, _conversionTokenSource.Token);
+                var code = await RunYtDlpAsync(ytDlpPath, ffmpegPath, ffprobePath, urls[index], outputPath, _outputFormat, _mp4Quality, _conversionTokenSource.Token);
                 if (code == 0)
                 {
                     successCount++;
@@ -341,7 +463,7 @@ public sealed class MainWindow : Window
             }
 
             SetStatus(successCount == urls.Length
-                ? $"完成，已輸出 {successCount} 個 MP3"
+                ? $"完成，已輸出 {successCount} 個 {_outputFormat}"
                 : $"完成 {successCount}/{urls.Length} 個，請查看記錄");
         }
         catch (OperationCanceledException)
@@ -368,6 +490,8 @@ public sealed class MainWindow : Window
         string ffprobePath,
         string url,
         string outputPath,
+        string outputFormat,
+        string mp4Quality,
         CancellationToken token)
     {
         var startInfo = new ProcessStartInfo
@@ -382,11 +506,7 @@ public sealed class MainWindow : Window
         startInfo.Environment["PYTHONUTF8"] = "1";
         ToolLocator.PrependToPath(startInfo.Environment, ytDlpPath, ffmpegPath, ffprobePath);
 
-        startInfo.ArgumentList.Add("--extract-audio");
-        startInfo.ArgumentList.Add("--audio-format");
-        startInfo.ArgumentList.Add("mp3");
-        startInfo.ArgumentList.Add("--audio-quality");
-        startInfo.ArgumentList.Add("0");
+        AddOutputFormatArguments(startInfo, outputFormat, mp4Quality);
         startInfo.ArgumentList.Add("--encoding");
         startInfo.ArgumentList.Add("utf-8");
         startInfo.ArgumentList.Add("--ffmpeg-location");
@@ -397,7 +517,10 @@ public sealed class MainWindow : Window
         {
             AppendLog($"Bilibili cookies: {cookieBrowser}");
         }
-        startInfo.ArgumentList.Add("--embed-thumbnail");
+        if (outputFormat == "MP3")
+        {
+            startInfo.ArgumentList.Add("--embed-thumbnail");
+        }
         startInfo.ArgumentList.Add("--add-metadata");
         startInfo.ArgumentList.Add("--paths");
         startInfo.ArgumentList.Add(outputPath);
@@ -433,6 +556,30 @@ public sealed class MainWindow : Window
         }
 
         return process.ExitCode;
+    }
+
+    private static void AddOutputFormatArguments(ProcessStartInfo startInfo, string outputFormat, string mp4Quality)
+    {
+        if (outputFormat == "MP4")
+        {
+            startInfo.ArgumentList.Add("--format");
+            startInfo.ArgumentList.Add(GetMp4FormatSelector(mp4Quality));
+            startInfo.ArgumentList.Add("--merge-output-format");
+            startInfo.ArgumentList.Add("mp4");
+            return;
+        }
+
+        startInfo.ArgumentList.Add("--extract-audio");
+        startInfo.ArgumentList.Add("--audio-format");
+        startInfo.ArgumentList.Add("mp3");
+        startInfo.ArgumentList.Add("--audio-quality");
+        startInfo.ArgumentList.Add("0");
+    }
+
+    private static string GetMp4FormatSelector(string mp4Quality)
+    {
+        var maxHeight = mp4Quality == "4K" ? 2160 : 1080;
+        return $"bestvideo*[height<={maxHeight}]+bestaudio/best[height<={maxHeight}]/best";
     }
 
     private static void AddBilibiliBrowserHeaders(ProcessStartInfo startInfo, string url)
@@ -665,7 +812,7 @@ public sealed class MainWindow : Window
 
         if (ytDlp is null || ffmpeg is null || ffprobe is null)
         {
-            SetStatus("需要 yt-dlp 和 ffmpeg 才能轉換 MP3");
+            SetStatus("需要 yt-dlp 和 ffmpeg 才能轉換 MP3 / MP4");
             AppendInstallHint();
             AppendLog($"yt-dlp: {ytDlp ?? "找不到"}");
             AppendLog($"ffmpeg: {ffmpeg ?? "找不到"}");
@@ -706,12 +853,15 @@ public sealed class MainWindow : Window
         _progressBar.IsIndeterminate = busy;
         _chooseFolderButton.IsEnabled = !busy;
         _clearUrlsButton.IsEnabled = !busy;
+        _urlInputCountComboBox.IsEnabled = !busy;
+        _outputFormatComboBox.IsEnabled = !busy;
+        _mp4QualityComboBox.IsEnabled = !busy;
         foreach (var urlBox in _urlBoxes)
         {
             urlBox.IsEnabled = !busy;
         }
         _outputBox.IsEnabled = !busy;
-        _convertButton.Content = busy ? "取消" : "轉成 MP3";
+        UpdateConvertButtonText(busy);
     }
 
     private void SaveOutputFolderIfValid()
@@ -719,8 +869,57 @@ public sealed class MainWindow : Window
         var outputPath = _outputBox.Text?.Trim();
         if (!string.IsNullOrWhiteSpace(outputPath) && Directory.Exists(outputPath))
         {
-            AppSettings.Save(outputPath);
+            SaveSettingsIfPossible();
         }
+    }
+
+    private void SaveSettingsIfPossible()
+    {
+        var outputPath = _outputBox.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(outputPath) && Directory.Exists(outputPath))
+        {
+            AppSettings.Save(outputPath, _urlInputCount, _outputFormat, _mp4Quality);
+            return;
+        }
+
+        AppSettings.Save(AppSettings.GetDefaultOutputFolder(), _urlInputCount, _outputFormat, _mp4Quality);
+    }
+
+    private void UpdateUrlBoxVisibility()
+    {
+        for (var index = 0; index < _urlBoxes.Length; index++)
+        {
+            _urlBoxes[index].IsVisible = index < _urlInputCount;
+        }
+    }
+
+    private void UpdateConvertButtonText(bool busy = false)
+    {
+        _convertButton.Content = busy ? "取消" : $"轉成 {_outputFormat}";
+    }
+
+    private void UpdateMp4QualityVisibility()
+    {
+        _mp4QualityComboBox.IsVisible = _outputFormat == "MP4";
+    }
+
+    private static int NormalizeUrlInputCount(int count)
+    {
+        return UrlInputCountOptions.Contains(count) ? count : 1;
+    }
+
+    private static string NormalizeOutputFormat(string? format)
+    {
+        return OutputFormatOptions.Contains(format, StringComparer.OrdinalIgnoreCase)
+            ? format!.ToUpperInvariant()
+            : "MP3";
+    }
+
+    private static string NormalizeMp4Quality(string? quality)
+    {
+        return Mp4QualityOptions.Contains(quality, StringComparer.OrdinalIgnoreCase)
+            ? quality!
+            : "1080p";
     }
 
     private void SetStatus(string text)
@@ -757,6 +956,9 @@ internal sealed class AppSettings
     private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "settings.json");
 
     public string LastOutputFolder { get; init; } = GetDefaultOutputFolder();
+    public int UrlInputCount { get; init; } = 1;
+    public string OutputFormat { get; init; } = "MP3";
+    public string Mp4Quality { get; init; } = "1080p";
 
     public static AppSettings Load()
     {
@@ -769,9 +971,17 @@ internal sealed class AppSettings
             if (File.Exists(path))
             {
                 var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path));
-                if (settings is not null && Directory.Exists(settings.LastOutputFolder))
+                if (settings is not null)
                 {
-                    return settings;
+                    return new AppSettings
+                    {
+                        LastOutputFolder = Directory.Exists(settings.LastOutputFolder)
+                            ? settings.LastOutputFolder
+                            : GetDefaultOutputFolder(),
+                        UrlInputCount = NormalizeUrlInputCount(settings.UrlInputCount),
+                        OutputFormat = NormalizeOutputFormat(settings.OutputFormat),
+                        Mp4Quality = NormalizeMp4Quality(settings.Mp4Quality)
+                    };
                 }
             }
         }
@@ -783,12 +993,18 @@ internal sealed class AppSettings
         return new AppSettings();
     }
 
-    public static void Save(string outputFolder)
+    public static void Save(string outputFolder, int urlInputCount, string outputFormat, string mp4Quality)
     {
         try
         {
             Directory.CreateDirectory(SettingsDirectory);
-            var settings = new AppSettings { LastOutputFolder = outputFolder };
+            var settings = new AppSettings
+            {
+                LastOutputFolder = outputFolder,
+                UrlInputCount = NormalizeUrlInputCount(urlInputCount),
+                OutputFormat = NormalizeOutputFormat(outputFormat),
+                Mp4Quality = NormalizeMp4Quality(mp4Quality)
+            };
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(SettingsPath, json);
         }
@@ -798,7 +1014,7 @@ internal sealed class AppSettings
         }
     }
 
-    private static string GetDefaultOutputFolder()
+    public static string GetDefaultOutputFolder()
     {
         var downloads = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -807,6 +1023,21 @@ internal sealed class AppSettings
         return Directory.Exists(downloads)
             ? downloads
             : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
+
+    private static int NormalizeUrlInputCount(int count)
+    {
+        return count is 1 or 3 or 7 ? count : 1;
+    }
+
+    private static string NormalizeOutputFormat(string? format)
+    {
+        return string.Equals(format, "MP4", StringComparison.OrdinalIgnoreCase) ? "MP4" : "MP3";
+    }
+
+    private static string NormalizeMp4Quality(string? quality)
+    {
+        return string.Equals(quality, "4K", StringComparison.OrdinalIgnoreCase) ? "4K" : "1080p";
     }
 }
 
