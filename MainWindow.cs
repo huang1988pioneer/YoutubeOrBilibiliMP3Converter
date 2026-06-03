@@ -454,6 +454,7 @@ public sealed class MainWindow : Window
         {
             AppendLog($"MP4 畫質: {_mp4Quality}");
         }
+        AppendLog("中文字幕: 如果平台提供，會一併下載");
         AppendLog($"準備轉換 {urls.Length} 個項目");
 
         try
@@ -526,6 +527,7 @@ public sealed class MainWindow : Window
         startInfo.ArgumentList.Add("utf-8");
         startInfo.ArgumentList.Add("--ffmpeg-location");
         startInfo.ArgumentList.Add(Path.GetDirectoryName(ffmpegPath) ?? ffmpegPath);
+        AddChineseSubtitleArguments(startInfo);
         AddBilibiliBrowserHeaders(startInfo, url);
         var cookieBrowser = AddBilibiliBrowserCookies(startInfo, url);
         if (cookieBrowser is not null)
@@ -571,6 +573,16 @@ public sealed class MainWindow : Window
         }
 
         return process.ExitCode;
+    }
+
+    private static void AddChineseSubtitleArguments(ProcessStartInfo startInfo)
+    {
+        startInfo.ArgumentList.Add("--write-subs");
+        startInfo.ArgumentList.Add("--write-auto-subs");
+        startInfo.ArgumentList.Add("--sub-langs");
+        startInfo.ArgumentList.Add("zh.*,zh-Hans,zh-Hant,zh-CN,zh-TW,zh");
+        startInfo.ArgumentList.Add("--convert-subs");
+        startInfo.ArgumentList.Add("srt");
     }
 
     private static void AddOutputFormatArguments(ProcessStartInfo startInfo, string outputFormat, string mp4Quality)
