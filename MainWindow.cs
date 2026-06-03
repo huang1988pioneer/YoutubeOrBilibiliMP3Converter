@@ -31,7 +31,9 @@ public sealed class MainWindow : Window
     private readonly Button _clearUrlsButton;
     private readonly Button _convertButton;
     private readonly TextBlock _statusText;
-    private readonly TextBox _logBox;
+    private readonly TextBlock _logText;
+    private readonly ScrollViewer _logScrollViewer;
+    private readonly Border _logSurface;
     private readonly ProgressBar _progressBar;
 
     private int _urlInputCount;
@@ -48,7 +50,7 @@ public sealed class MainWindow : Window
         Height = 620;
         MinWidth = 680;
         MinHeight = 520;
-        Background = Brush.Parse("#F6F7F9");
+        Background = Brush.Parse("#EEF2F6");
         _urlInputCount = settings.UrlInputCount;
         _outputFormat = settings.OutputFormat;
         _mp4Quality = settings.Mp4Quality;
@@ -135,18 +137,29 @@ public sealed class MainWindow : Window
             Maximum = 100
         };
 
-        _logBox = new TextBox
+        _logText = new TextBlock
         {
-            AcceptsReturn = true,
             TextWrapping = TextWrapping.Wrap,
-            IsReadOnly = true,
             FontFamily = new FontFamily("Consolas, Microsoft JhengHei UI, monospace"),
             FontSize = 12,
-            Background = Brush.Parse("#111827"),
             Foreground = Brush.Parse("#F9FAFB"),
-            BorderThickness = new Thickness(0),
+            LineHeight = 16
+        };
+        _logScrollViewer = new ScrollViewer
+        {
+            Content = _logText,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+        };
+        _logSurface = new Border
+        {
+            Background = Brush.Parse("#111827"),
+            BorderBrush = Brush.Parse("#273449"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
             Padding = new Thickness(14),
-            MinHeight = 210
+            MinHeight = 210,
+            Child = _logScrollViewer
         };
 
         Content = BuildLayout();
@@ -236,8 +249,8 @@ public sealed class MainWindow : Window
             FontWeight = FontWeight.SemiBold,
             Foreground = Brush.Parse("#394150")
         });
-        Grid.SetRow(_logBox, 1);
-        logPanel.Children.Add(_logBox);
+        Grid.SetRow(_logSurface, 1);
+        logPanel.Children.Add(_logSurface);
         Grid.SetRow(logPanel, 5);
         body.Children.Add(logPanel);
 
@@ -429,7 +442,7 @@ public sealed class MainWindow : Window
 
         _conversionTokenSource = new CancellationTokenSource();
         SetBusy(true);
-        _logBox.Text = "";
+        _logText.Text = "";
         AppendLog($"yt-dlp: {ytDlpPath}");
         AppendLog($"ffmpeg: {ffmpegPath}");
         AppendLog($"ffprobe: {ffprobePath}");
@@ -858,9 +871,9 @@ public sealed class MainWindow : Window
         _mp4QualityComboBox.IsEnabled = !busy;
         foreach (var urlBox in _urlBoxes)
         {
-            urlBox.IsEnabled = !busy;
+            urlBox.IsReadOnly = busy;
         }
-        _outputBox.IsEnabled = !busy;
+        _outputBox.IsReadOnly = busy;
         UpdateConvertButtonText(busy);
     }
 
@@ -936,8 +949,7 @@ public sealed class MainWindow : Window
 
         Dispatcher.UIThread.Post(() =>
         {
-            _logBox.Text += $"{line}{Environment.NewLine}";
-            _logBox.CaretIndex = _logBox.Text.Length;
+            _logText.Text += $"{line}{Environment.NewLine}";
         });
     }
 }
